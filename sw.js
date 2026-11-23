@@ -1,13 +1,13 @@
-const CACHE_NAME = 'caro-xo-pwa-v2';
+const CACHE_NAME = 'caro-xo-pwa-v3';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './style.css',
-  './script.js',
-  './peerjs.min.js',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  '/',
+  '/index.html',
+  '/style.css',
+  '/script.js',
+  '/peerjs.min.js',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 // Install: Cache all core assets
