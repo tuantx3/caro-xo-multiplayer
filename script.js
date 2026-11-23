@@ -141,6 +141,7 @@ class CaroGame {
     // Game State
     this.board = [];
     this.currentPlayer = 'X';
+    this.isGameStarted = false;
     this.isGameOver = false;
     this.isPaused = false;
     this.moveHistory = [];
@@ -672,6 +673,7 @@ class CaroGame {
     this.stopTimer();
     this.board = Array(this.boardSize).fill(null).map(() => Array(this.boardSize).fill(null));
     this.currentPlayer = 'X';
+    this.isGameStarted = false;
     this.isGameOver = false;
     this.isPaused = false;
     this.moveHistory = [];
@@ -684,7 +686,7 @@ class CaroGame {
     this.updateTurnUI();
     this.updateStatsUI();
     this.resetTurnTimer();
-    this.startTimer();
+    // Do NOT start timer until first move is played!
   }
 
   // --- Render Board DOM ---
@@ -710,37 +712,41 @@ class CaroGame {
 
   // --- Dynamic Board Sizing & Responsive Scaling ---
   adjustBoardScale() {
-    if (!this.dom.boardContainer || !this.dom.board) return;
+    if (!this.dom.board) return;
     
-    // Reset any previous inline sizing to measure natural fit
     const container = this.dom.boardWrapper || document.querySelector('.board-wrapper');
     if (!container) return;
 
-    const availableWidth = container.clientWidth - 16;
-    const availableHeight = container.clientHeight - 16;
-    const size = Math.floor(Math.min(availableWidth, availableHeight));
+    // Available inner dimensions
+    const availableWidth = container.clientWidth - 12;
+    const availableHeight = container.clientHeight - 12;
 
-    if (size > 0) {
-      if (this.mode === 'xo3') {
-        const xoSize = Math.min(size, 420);
-        this.dom.board.style.width = `${xoSize}px`;
-        this.dom.board.style.height = `${xoSize}px`;
-        const cellSize = Math.floor(xoSize / 3);
-        document.documentElement.style.setProperty('--dynamic-cell-size', `${cellSize}px`);
-        document.documentElement.style.setProperty('--dynamic-font-size', `${Math.floor(cellSize * 0.65)}px`);
-      } else {
-        // Caro 15x15 or 19x19: Fit screen nicely or scale appropriately
-        const cellSize = Math.floor(size / this.boardSize);
-        // Minimum comfortable tap size for mobile
-        const minCellSize = this.boardSize === 19 ? 25 : 28;
-        const targetCellSize = Math.max(cellSize, minCellSize);
-        const boardDim = targetCellSize * this.boardSize;
+    if (availableWidth <= 0 || availableHeight <= 0) return;
 
-        this.dom.board.style.width = `${boardDim}px`;
-        this.dom.board.style.height = `${boardDim}px`;
-        document.documentElement.style.setProperty('--dynamic-cell-size', `${targetCellSize}px`);
-        document.documentElement.style.setProperty('--dynamic-font-size', `${Math.max(12, Math.floor(targetCellSize * 0.62))}px`);
+    if (this.mode === 'xo3') {
+      const xoSize = Math.min(availableWidth, availableHeight, 460);
+      this.dom.board.style.width = `${xoSize}px`;
+      this.dom.board.style.height = `${xoSize}px`;
+      const cellSize = Math.floor(xoSize / 3);
+      document.documentElement.style.setProperty('--dynamic-cell-size', `${cellSize}px`);
+      document.documentElement.style.setProperty('--dynamic-font-size', `${Math.floor(cellSize * 0.65)}px`);
+    } else {
+      // Caro 15x15 or 19x19
+      // Fit fully within screen if screen is large enough, or scale proportionally
+      const minDimension = Math.min(availableWidth, availableHeight);
+      let cellSize = Math.floor(minDimension / this.boardSize);
+
+      // On mobile screens, ensure cells don't get too small to tap
+      const minCellSize = this.boardSize === 19 ? 24 : 26;
+      if (cellSize < minCellSize) {
+        cellSize = minCellSize;
       }
+
+      const boardDim = cellSize * this.boardSize;
+      this.dom.board.style.width = `${boardDim}px`;
+      this.dom.board.style.height = `${boardDim}px`;
+      document.documentElement.style.setProperty('--dynamic-cell-size', `${cellSize}px`);
+      document.documentElement.style.setProperty('--dynamic-font-size', `${Math.max(12, Math.floor(cellSize * 0.62))}px`);
     }
   }
 
@@ -774,6 +780,12 @@ class CaroGame {
   // --- Execute Move Logic ---
   executeMove(r, c, player) {
     if (this.isGameOver || this.board[r][c] !== null) return;
+
+    // Start timer upon the first move of the match!
+    if (!this.isGameStarted) {
+      this.isGameStarted = true;
+      this.startTimer();
+    }
 
     this.board[r][c] = player;
     this.moveHistory.push({ row: r, col: c, player });
@@ -1033,6 +1045,10 @@ class CaroGame {
       const prev = this.moveHistory[this.moveHistory.length - 1];
       const prevCell = this.getCellElement(prev.row, prev.col);
       if (prevCell) prevCell.classList.add('last-move');
+    } else {
+      // Reverted to start of game
+      this.isGameStarted = false;
+      this.stopTimer();
     }
 
     this.currentPlayer = last.player;
@@ -1110,6 +1126,11 @@ class CaroGame {
 window.addEventListener('DOMContentLoaded', () => {
   window.game = new CaroGame();
   initPWA();
+  
+  // Call resize scale after fonts and layout settle
+  setTimeout(() => {
+    if (window.game) window.game.adjustBoardScale();
+  }, 150);
 });
 
 // --- PWA Service Worker & Install Prompt ---
