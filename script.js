@@ -135,6 +135,8 @@ class CaroGame {
     this.turnLimitSeconds = 30;
     this.ruleCaro = 'standard';
     this.timeoutAction = 'lose';
+    this.extraSeconds = 10;
+    this.extraTimeUsed = { X: false, O: false };
 
     // Game State
     this.board = [];
@@ -307,18 +309,51 @@ class CaroGame {
       this.togglePause();
     });
 
-    // Settings Modal
+    // Settings Modal & Extra time slider
+    const extraTimeConfig = document.getElementById('extraTimeConfig');
+    const extraTimeRange = document.getElementById('extraTimeRange');
+    const extraSecondsVal = document.getElementById('extraSecondsVal');
+
+    document.querySelectorAll('input[name="timeoutAction"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        if (extraTimeConfig) {
+          extraTimeConfig.style.display = e.target.value === 'extra' ? 'block' : 'none';
+        }
+      });
+    });
+
+    if (extraTimeRange && extraSecondsVal) {
+      extraTimeRange.addEventListener('input', (e) => {
+        extraSecondsVal.textContent = `${e.target.value}s`;
+      });
+    }
+
     this.dom.rulesBtn.addEventListener('click', () => {
+      // Sync UI with current settings
+      const currentRadio = document.querySelector(`input[name="timeoutAction"][value="${this.timeoutAction}"]`);
+      if (currentRadio) currentRadio.checked = true;
+      if (extraTimeConfig) {
+        extraTimeConfig.style.display = this.timeoutAction === 'extra' ? 'block' : 'none';
+      }
+      if (extraTimeRange && extraSecondsVal) {
+        extraTimeRange.value = this.extraSeconds;
+        extraSecondsVal.textContent = `${this.extraSeconds}s`;
+      }
       this.dom.settingsModal.classList.add('open');
     });
+
     this.dom.closeSettingsBtn.addEventListener('click', () => {
       this.dom.settingsModal.classList.remove('open');
     });
+
     this.dom.applySettingsBtn.addEventListener('click', () => {
       const selectedRule = document.querySelector('input[name="ruleCaro"]:checked').value;
       const selectedTimeout = document.querySelector('input[name="timeoutAction"]:checked').value;
       this.ruleCaro = selectedRule;
       this.timeoutAction = selectedTimeout;
+      if (extraTimeRange) {
+        this.extraSeconds = parseInt(extraTimeRange.value, 10) || 10;
+      }
       this.sound.enabled = this.dom.soundSettingCheckbox.checked;
       this.dom.soundIcon.textContent = this.sound.enabled ? '🔊' : '🔇';
       this.dom.settingsModal.classList.remove('open');
@@ -344,8 +379,8 @@ class CaroGame {
     this.dom.btnCreateRoom.addEventListener('click', () => this.createOnlineRoom());
     this.dom.btnJoinRoom.addEventListener('click', () => {
       const code = this.dom.joinRoomInput.value.trim();
-      if (!code || code.length < 4) {
-        this.showToast('Vui lòng nhập mã phòng hợp lệ (4-6 ký tự)!');
+      if (!code || code.length < 3) {
+        this.showToast('Vui lòng nhập mã phòng (3 chữ số)!');
         return;
       }
       this.joinOnlineRoom(code);
@@ -362,6 +397,11 @@ class CaroGame {
 
     this.dom.btnCancelRoom.addEventListener('click', () => this.leaveOnlineRoom());
     this.dom.btnLeaveRoom.addEventListener('click', () => this.leaveOnlineRoom());
+
+    window.addEventListener('resize', () => {
+      clearTimeout(this._resizeTimeout);
+      this._resizeTimeout = setTimeout(() => this.adjustBoardScale(), 100);
+    });
 
     // Emotes
     this.dom.emoteBtns.forEach(btn => {
@@ -402,7 +442,7 @@ class CaroGame {
       return;
     }
 
-    const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const roomCode = Math.floor(100 + Math.random() * 900).toString();
     const peerId = `caroxovn_${roomCode}`;
 
     this.showToast('Đang tạo phòng đấu...');
@@ -637,6 +677,7 @@ class CaroGame {
     this.moveHistory = [];
     this.winningCells = [];
     this.totalTimes = { X: 0, O: 0 };
+    this.extraTimeUsed = { X: false, O: false };
     this.dom.pauseIcon.textContent = '⏸️';
 
     this.renderBoard();
@@ -661,6 +702,44 @@ class CaroGame {
         cell.dataset.col = c;
         cell.addEventListener('click', () => this.handleCellClick(r, c));
         this.dom.board.appendChild(cell);
+      }
+    }
+
+    this.adjustBoardScale();
+  }
+
+  // --- Dynamic Board Sizing & Responsive Scaling ---
+  adjustBoardScale() {
+    if (!this.dom.boardContainer || !this.dom.board) return;
+    
+    // Reset any previous inline sizing to measure natural fit
+    const container = this.dom.boardWrapper || document.querySelector('.board-wrapper');
+    if (!container) return;
+
+    const availableWidth = container.clientWidth - 16;
+    const availableHeight = container.clientHeight - 16;
+    const size = Math.floor(Math.min(availableWidth, availableHeight));
+
+    if (size > 0) {
+      if (this.mode === 'xo3') {
+        const xoSize = Math.min(size, 420);
+        this.dom.board.style.width = `${xoSize}px`;
+        this.dom.board.style.height = `${xoSize}px`;
+        const cellSize = Math.floor(xoSize / 3);
+        document.documentElement.style.setProperty('--dynamic-cell-size', `${cellSize}px`);
+        document.documentElement.style.setProperty('--dynamic-font-size', `${Math.floor(cellSize * 0.65)}px`);
+      } else {
+        // Caro 15x15 or 19x19: Fit screen nicely or scale appropriately
+        const cellSize = Math.floor(size / this.boardSize);
+        // Minimum comfortable tap size for mobile
+        const minCellSize = this.boardSize === 19 ? 25 : 28;
+        const targetCellSize = Math.max(cellSize, minCellSize);
+        const boardDim = targetCellSize * this.boardSize;
+
+        this.dom.board.style.width = `${boardDim}px`;
+        this.dom.board.style.height = `${boardDim}px`;
+        document.documentElement.style.setProperty('--dynamic-cell-size', `${targetCellSize}px`);
+        document.documentElement.style.setProperty('--dynamic-font-size', `${Math.max(12, Math.floor(targetCellSize * 0.62))}px`);
       }
     }
   }
@@ -727,6 +806,7 @@ class CaroGame {
 
     // Switch Turn
     this.currentPlayer = player === 'X' ? 'O' : 'X';
+    this.extraTimeUsed[this.currentPlayer] = false;
     this.updateTurnUI();
     this.resetTurnTimer();
   }
@@ -909,12 +989,23 @@ class CaroGame {
   }
 
   handleTimeout() {
+    if (this.timeoutAction === 'extra' && !this.extraTimeUsed[this.currentPlayer]) {
+      this.extraTimeUsed[this.currentPlayer] = true;
+      this.turnTimeRemaining = this.extraSeconds;
+      this.lastSecondTicked = -1;
+      this.sound.playTickSound();
+      this.showToast(`⏱️ Người chơi ${this.currentPlayer} được cộng thêm ${this.extraSeconds}s!`);
+      this.updateTurnTimerUI();
+      return;
+    }
+
     this.sound.playTimeoutSound();
-    if (this.timeoutAction === 'lose') {
+    if (this.timeoutAction === 'lose' || (this.timeoutAction === 'extra' && this.extraTimeUsed[this.currentPlayer])) {
       const winner = this.currentPlayer === 'X' ? 'O' : 'X';
       this.handleGameWin(winner, [], 'timeout');
     } else {
       this.currentPlayer = this.currentPlayer === 'X' ? 'O' : 'X';
+      this.extraTimeUsed[this.currentPlayer] = false;
       this.updateTurnUI();
       this.resetTurnTimer();
     }

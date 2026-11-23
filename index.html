@@ -50,15 +50,15 @@
     <div class="online-panel" id="onlinePanel" style="display: none;">
       <!-- State 1: Choose Create or Join -->
       <div class="online-setup" id="onlineSetup">
-        <div class="setup-col">
+        <div class="setup-col create-col">
           <button class="setup-btn primary" id="btnCreateRoom">
-            <span>➕</span> Tạo phòng mới
+            <span>➕</span> Tạo phòng
           </button>
         </div>
         <div class="divider">hoặc</div>
-        <div class="setup-col">
+        <div class="setup-col join-col">
           <div class="join-box">
-            <input type="text" id="joinRoomInput" placeholder="Mã 6 số" maxlength="6" inputmode="numeric">
+            <input type="text" id="joinRoomInput" placeholder="Mã 3 số" maxlength="3" inputmode="numeric">
             <button class="setup-btn secondary" id="btnJoinRoom">Vào phòng</button>
           </div>
         </div>
@@ -221,6 +221,22 @@
               <input type="radio" name="timeoutAction" value="pass">
               <span>Mất lượt đánh (Chuyển lượt)</span>
             </label>
+            <label class="radio-label">
+              <input type="radio" name="timeoutAction" value="extra">
+              <span>Cộng thêm thời gian</span>
+            </label>
+          </div>
+          <div class="extra-time-config" id="extraTimeConfig" style="margin-top: 10px; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span style="font-size: 0.85rem; color: var(--text-secondary);">Thời gian cộng thêm:</span>
+              <span id="extraSecondsVal" style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--x-color);">10s</span>
+            </div>
+            <input type="range" id="extraTimeRange" min="5" max="15" step="1" value="10" style="width: 100%; accent-color: var(--x-color); cursor: pointer;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">
+              <span>5s</span>
+              <span>10s</span>
+              <span>15s</span>
+            </div>
           </div>
         </div>
 
