@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cờ Caro / XO - 2 Người Chơi</title>
+  
+  <!-- PWA & Mobile Web Meta -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Caro XO">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="x-mark">X</span>
+        <span class="title">CARO</span>
+        <span class="o-mark">O</span>
+      </div>
+      <div class="header-controls">
+        <button id="pwaInstallBtn" class="icon-btn pwa-btn" style="display: none;" title="Cài đặt ứng dụng vào điện thoại">
+          📲
+        </button>
+        <button id="soundToggleBtn" class="icon-btn" title="Bật/Tắt âm thanh">
+          <span id="soundIcon">🔊</span>
+        </button>
+        <button id="rulesBtn" class="icon-btn" title="Cài đặt & Luật chơi">
+          ⚙️
+        </button>
+      </div>
+    </header>
+
+    <!-- Match Mode Tabs: Local vs Online -->
+    <div class="network-tabs">
+      <button class="network-tab active" id="tabLocal">📱 Cùng 1 máy</button>
+      <button class="network-tab" id="tabOnline">🌐 Đấu Online (2 máy)</button>
+    </div>
+
+    <!-- Online Lobby Panel (Collapsed when in local mode) -->
+    <div class="online-panel" id="onlinePanel" style="display: none;">
+      <!-- State 1: Choose Create or Join -->
+      <div class="online-setup" id="onlineSetup">
+        <div class="setup-col">
+          <button class="setup-btn primary" id="btnCreateRoom">
+            <span>➕</span> Tạo phòng mới
+          </button>
+        </div>
+        <div class="divider">hoặc</div>
+        <div class="setup-col">
+          <div class="join-box">
+            <input type="text" id="joinRoomInput" placeholder="Mã 6 số" maxlength="6" inputmode="numeric">
+            <button class="setup-btn secondary" id="btnJoinRoom">Vào phòng</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- State 2: Waiting for Guest in Room -->
+      <div class="online-waiting" id="onlineWaiting" style="display: none;">
+        <div class="waiting-header">
+          <span class="pulse-dot"></span>
+          <span>Đang đợi đối thủ vào phòng...</span>
+        </div>
+        <div class="room-pin-display">
+          <span class="label">Mã phòng:</span>
+          <span class="code" id="displayRoomCode">------</span>
+          <button class="copy-btn" id="btnCopyInviteLink" title="Sao chép link mời">
+            📋 Sao chép link mời
+          </button>
+        </div>
+        <button class="cancel-room-btn" id="btnCancelRoom">Hủy phòng</button>
+      </div>
+
+      <!-- State 3: Active Online Match Banner -->
+      <div class="online-active-bar" id="onlineActiveBar" style="display: none;">
+        <div class="online-status-info">
+          <span class="status-indicator online"></span>
+          <span>Phòng: <strong id="activeRoomCode">#------</strong></span>
+          <span class="role-tag" id="myRoleTag">Bạn: X</span>
+        </div>
+        <div class="online-actions">
+          <button class="leave-btn" id="btnLeaveRoom">Rời phòng</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Status Bar & Players -->
+    <div class="players-panel">
+      <!-- Player X Card -->
+      <div class="player-card" id="playerCardX">
+        <div class="player-badge x-theme">
+          <span class="symbol">X</span>
+          <span class="name" id="namePlayerX">Người chơi 1</span>
+        </div>
+        <div class="timer-section">
+          <div class="turn-timer" id="turnTimerX">30s</div>
+          <div class="total-time">Tổng: <span id="totalTimeX">00:00</span></div>
+        </div>
+        <div class="score-badge" id="scoreX">0 thắng</div>
+      </div>
+
+      <!-- Center VS & Turn Banner -->
+      <div class="match-info">
+        <div class="turn-indicator" id="turnIndicator">
+          Lượt của <span id="currentTurnName" class="x-color">X</span>
+        </div>
+        <div class="timer-progress-bar">
+          <div class="timer-fill" id="timerFill"></div>
+        </div>
+        <div class="move-counter" id="moveCount">Nước đi: 0</div>
+      </div>
+
+      <!-- Player O Card -->
+      <div class="player-card" id="playerCardO">
+        <div class="player-badge o-theme">
+          <span class="symbol">O</span>
+          <span class="name" id="namePlayerO">Người chơi 2</span>
+        </div>
+        <div class="timer-section">
+          <div class="turn-timer" id="turnTimerO">30s</div>
+          <div class="total-time">Tổng: <span id="totalTimeO">00:00</span></div>
+        </div>
+        <div class="score-badge" id="scoreO">0 thắng</div>
+      </div>
+    </div>
+
+    <!-- Quick Mode Selector -->
+    <div class="mode-bar">
+      <div class="chip-group">
+        <button class="chip active" data-mode="caro15">Caro (15x15)</button>
+        <button class="chip" data-mode="caro19">Caro Lớn (19x19)</button>
+        <button class="chip" data-mode="xo3">XO Nhanh (3x3)</button>
+      </div>
+      <div class="timer-selector">
+        <label for="turnLimitSelect">⏱️ Thời gian:</label>
+        <select id="turnLimitSelect">
+          <option value="15">15 giây / lượt</option>
+          <option value="30" selected>30 giây / lượt</option>
+          <option value="60">60 giây / lượt</option>
+          <option value="0">Không giới hạn</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Online Emote Bar (Only visible when connected online) -->
+    <div class="online-emote-bar" id="onlineEmoteBar" style="display: none;">
+      <span class="emote-label">Biểu cảm:</span>
+      <div class="emote-buttons">
+        <button class="emote-btn" data-emoji="👍">👍</button>
+        <button class="emote-btn" data-emoji="🔥">🔥</button>
+        <button class="emote-btn" data-emoji="😮">😮</button>
+        <button class="emote-btn" data-emoji="😂">😂</button>
+        <button class="emote-btn" data-emoji="👏">👏</button>
+        <button class="emote-btn" data-emoji="☕">☕</button>
+      </div>
+    </div>
+
+    <!-- Main Game Board Area -->
+    <main class="board-wrapper">
+      <div class="board-container" id="boardContainer">
+        <!-- Canvas board will be rendered here -->
+        <div class="board" id="board"></div>
+      </div>
+      <!-- Floating Emote Animation Layer -->
+      <div class="emote-layer" id="emoteLayer"></div>
+    </main>
+
+    <!-- Bottom Actions -->
+    <footer class="app-footer">
+      <button id="undoBtn" class="action-btn secondary">
+        <span>↩️</span> Đi lại
+      </button>
+      <button id="pauseBtn" class="action-btn secondary">
+        <span id="pauseIcon">⏸️</span> Tạm dừng
+      </button>
+      <button id="restartBtn" class="action-btn primary">
+        <span>🔄</span> Ván mới
+      </button>
+    </footer>
+  </div>
+
+  <!-- Settings / Rules Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>⚙️ Cài Đặt & Luật Chơi</h3>
+        <button class="close-modal" id="closeSettingsBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-item">
+          <label><strong>Luật chiến thắng Caro:</strong></label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="ruleCaro" value="standard" checked>
+              <span>Luật chuẩn VN (Bị chặn 2 đầu không thắng)</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="ruleCaro" value="freestyle">
+              <span>Luật tự do (5 ô bất kỳ là thắng)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <label><strong>Khi hết thời gian lượt:</strong></label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="timeoutAction" value="lose" checked>
+              <span>Xử thua ngay lập tức</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="timeoutAction" value="pass">
+              <span>Mất lượt đánh (Chuyển lượt)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <label><strong>Âm thanh & Hiệu ứng:</strong></label>
+          <div class="toggle-row">
+            <span>Âm thanh đặt cờ & đồng hồ</span>
+            <input type="checkbox" id="soundSettingCheckbox" checked>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="action-btn primary" id="applySettingsBtn">Áp dụng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Modal -->
+  <div class="modal-overlay" id="gameOverModal">
+    <div class="modal-card winner-card">
+      <div class="trophy-icon" id="winnerTrophy">🏆</div>
+      <h2 id="winnerTitle">Chiến Thắng!</h2>
+      <p id="winnerDesc">Người chơi X đã chiến thắng với 5 ô liên tiếp.</p>
+      
+      <div class="match-summary">
+        <div class="summary-item">
+          <span class="label">Tổng nước đi:</span>
+          <span class="value" id="summaryMoves">0</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Thời gian X đã dùng:</span>
+          <span class="value" id="summaryTimeX">00:00</span>
+        </div>
+        <div class="summary-item">
+          <span class="label">Thời gian O đã dùng:</span>
+          <span class="value" id="summaryTimeO">00:00</span>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="action-btn secondary" id="reviewBoardBtn">Xem lại bàn cờ</button>
+        <button class="action-btn primary" id="playAgainBtn">Ván mới</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast-notification" id="toastNotification"></div>
+
+  <!-- Load PeerJS for WebRTC P2P Multiplayer -->
+  <script src="peerjs.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

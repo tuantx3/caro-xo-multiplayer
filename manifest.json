@@ -1,0 +1,24 @@
+{
+  "name": "Cờ Caro & XO - 2 Người Chơi",
+  "short_name": "Caro XO",
+  "description": "Game cờ Caro và XO 2 người chơi có đồng hồ bấm giờ, hỗ trợ chơi offline 100%",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
